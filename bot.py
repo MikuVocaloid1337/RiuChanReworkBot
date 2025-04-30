@@ -7,6 +7,9 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiogram.filters import Command
+from aiogram import F
+
 
 logging.basicConfig(
     level=logging.INFO,  # можно DEBUG для подробностей
