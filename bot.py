@@ -8,9 +8,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
-offers = load_json("offers.json")
-lookings = load_json("lookings.json")
-
 logging.basicConfig(
     level=logging.INFO,  # можно DEBUG для подробностей
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -37,7 +34,22 @@ bot = Bot(
 
 dp = Dispatcher()
 
+def save_json(data, filename):
+    path = os.path.join(DATA_FOLDER, filename)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def load_json(filename):
+    path = os.path.join(DATA_FOLDER, filename)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
 # --- Данные ---
+offers = load_json("offers.json")
+lookings = load_json("lookings.json")
+
 skins = {
     "ст": {
         "Ss+": ["summer Riu chan"],
@@ -188,18 +200,6 @@ async def error_handler(event, exception):
 async def fallback_handler(msg: types.Message):
     logger.warning(f"Неизвестная команда от {msg.from_user.id}: {msg.text}")
     await msg.answer("Не понял команду. Напиши /help.")
-
-def save_json(data, filename):
-    path = os.path.join(DATA_FOLDER, filename)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-def load_json(filename):
-    path = os.path.join(DATA_FOLDER, filename)
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
 
 # Запуск бота
 async def main():
