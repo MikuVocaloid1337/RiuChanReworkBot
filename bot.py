@@ -1,14 +1,25 @@
+# bot.py
+
+import asyncio
+import logging
 import os
-from aiogram import Bot, Dispatcher, types, executor
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message
+from aiogram.enums import ParseMode
+from aiogram.filters import Command
 from dotenv import load_dotenv
 
-# Загрузка токена из .env
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
-bot = Bot(token=TOKEN)
-dp = Dispatcher(bot)
 
-# --- ДАННЫЕ ---
+# Логирование
+logging.basicConfig(level=logging.INFO)
+
+# Инициализация бота и диспетчера
+bot = Bot(token=TOKEN, parse_mode=ParseMode.MARKDOWN)
+dp = Dispatcher()
+
+# --- Данные ---
 skins = {
     "ст": {
         "Ss+": ["summer Riu chan"],
@@ -28,8 +39,7 @@ skins = {
             {"name": "Puchi heaven set", "parts": ["Mid", "Low"]},
             {"name": "Bruno set", "parts": ["Mid", "Low"]},
             {"name": "Fugo set", "parts": ["Mid", "Low"]},
-        ],
-        # Остальные категории аналогично добавь при необходимости
+        ]
     },
     "itm": {
         "SS+": ["Green baby"],
@@ -47,33 +57,32 @@ skins = {
     }
 }
 
-# --- ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ ---
 offers = {}
 lookings = {}
 admins = set()
 adm_codes = {"#VagueOwner", "#ShapkaKrutoi", "#MikuPikuBeam"}
 
-# --- ПОДДЕРЖКА КОМАНД ---
 def format_catalog():
     result = []
     for typ, categories in skins.items():
-        result.append(f"Категория: {typ.upper()}")
+        result.append(f"*Категория: {typ.upper()}*")
         for rarity, items in categories.items():
-            result.append(f"  Редкость: {rarity}")
+            result.append(f"  _Редкость: {rarity}_")
             for item in items:
                 if isinstance(item, str):
-                    result.append(f"    " + item + "")
+                    result.append(f"    {item}")
                 elif isinstance(item, dict):
                     result.append(f"    {item['name']}")
                     result.append("     " + ", ".join(item["parts"]))
     return "\n".join(result)
 
-@dp.message_handler(commands=['start'])
-async def start(msg: types.Message):
-    await msg.reply("Бот активен. Напиши /help для списка команд.")
+# --- Хендлеры ---
+@dp.message(Command("start"))
+async def cmd_start(msg: Message):
+    await msg.answer("Бот активен. Напиши /help для списка команд.")
 
-@dp.message_handler(commands=['help'])
-async def help_command(msg: types.Message):
+@dp.message(Command("help"))
+async def cmd_help(msg: Message):
     text = (
         "Основные команды:\n"
         "/help — показать эту справку\n"
@@ -87,83 +96,64 @@ async def help_command(msg: types.Message):
         "+трейд сет 77 rings set: Top, Mid\n"
         "+lf сет 77 rings set: Mid, Low"
     )
-    await msg.reply(text)
+    await msg.answer(text)
 
-@dp.message_handler(lambda msg: msg.text.startswith("+трейд"))
-async def add_trade(msg: types.Message):
+@dp.message(F.text.startswith("+трейд"))
+async def add_trade(msg: Message):
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:]]
-    offers[user_id] = offers.get(user_id, [])
-    for line in lines:
-        offers[user_id].append(line.strip())
-    await msg.reply("Добавлено в трейд.")
+    offers.setdefault(user_id, []).extend([line.strip() for line in lines])
+    await msg.answer("Добавлено в трейд.")
 
-@dp.message_handler(lambda msg: msg.text.startswith("+lf"))
-async def add_lf(msg: types.Message):
+@dp.message(F.text.startswith("+lf"))
+async def add_lf(msg: Message):
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:]]
-    lookings[user_id] = lookings.get(user_id, [])
-    for line in lines:
-        lookings[user_id].append(line.strip())
-    await msg.reply("Добавлено в лф.")
+    lookings.setdefault(user_id, []).extend([line.strip() for line in lines])
+    await msg.answer("Добавлено в лф.")
 
-@dp.message_handler(lambda msg: msg.text == "!трейд")
-async def show_trade(msg: types.Message):
+@dp.message(F.text == "!трейд")
+async def show_trade(msg: Message):
     user_id = msg.from_user.id
     trades = offers.get(user_id, [])
-    if not trades:
-        await msg.reply("Трейд пуст.")
+    if trades:
+        await msg.answer("Твой трейд:\n" + "\n".join(f"- {t}" for t in trades))
     else:
-        await msg.reply("Твой трейд:\n" + "\n".join(f"- {t}" for t in trades), parse_mode='Markdown')
+        await msg.answer("Трейд пуст.")
 
-@dp.message_handler(lambda msg: msg.text == "!лф")
-async def show_lf(msg: types.Message):
+@dp.message(F.text == "!лф")
+async def show_lf(msg: Message):
     user_id = msg.from_user.id
     lfs = lookings.get(user_id, [])
-    if not lfs:
-        await msg.reply("Лф пуст.")
+    if lfs:
+        await msg.answer("Ты ищешь:\n" + "\n".join(f"- {t}" for t in lfs))
     else:
-        await msg.reply("Ты ищешь:\n" + "\n".join(f"- {t}" for t in lfs), parse_mode='Markdown')
+        await msg.answer("Лф пуст.")
 
-@dp.message_handler(lambda msg: msg.text == "!очистить трейд")
-async def clear_trade(msg: types.Message):
-    user_id = msg.from_user.id
-    offers[user_id] = []
-    await msg.reply("Трейд очищен.")
+@dp.message(F.text == "!очистить трейд")
+async def clear_trade(msg: Message):
+    offers[msg.from_user.id] = []
+    await msg.answer("Трейд очищен.")
 
-@dp.message_handler(lambda msg: msg.text == "!очистить лф")
-async def clear_lf(msg: types.Message):
-    user_id = msg.from_user.id
-    lookings[user_id] = []
-    await msg.reply("Лф очищен.")
+@dp.message(F.text == "!очистить лф")
+async def clear_lf(msg: Message):
+    lookings[msg.from_user.id] = []
+    await msg.answer("Лф очищен.")
 
-@dp.message_handler(lambda msg: msg.text.lower() in ["ss ст", "s вп", "сет a+", "itm b+", "крф s+"])
-async def show_catalog(msg: types.Message):
-    await msg.reply(format_catalog(), parse_mode='Markdown')
+@dp.message(F.text.in_(["ss ст", "s вп", "сет a+", "itm b+", "крф s+"]))
+async def show_catalog_handler(msg: Message):
+    await msg.answer(format_catalog())
 
-@dp.message_handler(lambda msg: msg.text.startswith("#VagueMessage"))
-async def vague_message(msg: types.Message):
-    if msg.chat.type != "private" or msg.from_user.id not in admins:
-        return
-    await msg.reply("Дай ссылку куда скинуть твой текст")
-
-    @dp.message_handler()
-    async def get_chat_link(m1: types.Message):
-        chat_link = m1.text
-        await m1.reply("Дай текст который ты хочешь опубликовать в этом чате")
-
-        @dp.message_handler()
-        async def get_text(m2: types.Message):
-            await bot.send_message(chat_link, m2.text)
-
-@dp.message_handler(lambda msg: msg.text in adm_codes)
-async def activate_admin(msg: types.Message):
+@dp.message(F.text.in_(adm_codes))
+async def activate_admin(msg: Message):
     user_id = msg.from_user.id
     admins.add(user_id)
     adm_codes.remove(msg.text)
-    await msg.reply("Теперь ты админ. Тебе доступны админ-команды.")
+    await msg.answer("Теперь ты админ. Тебе доступны админ-команды.")
+
+# Запуск бота
+async def main():
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
-    print("Бот запущен.")
-    # Запуск бота
+    asyncio.run(main())
