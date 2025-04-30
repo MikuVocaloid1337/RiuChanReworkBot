@@ -1,22 +1,40 @@
 # bot.py
 
-import asyncio
-import logging
 import os
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message
+import signal
+import json
+import logging
+from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
-from aiogram.filters import Command
-from dotenv import load_dotenv
+from aiogram.client.default import DefaultBotProperties
 
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
+offers = load_json("offers.json")
+lookings = load_json("lookings.json")
 
-# Логирование
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,  # можно DEBUG для подробностей
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
-# Инициализация бота и диспетчера
-bot = Bot(token=TOKEN, parse_mode=ParseMode.MARKDOWN)
+file_handler = logging.FileHandler("bot.log")
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+))
+logger.addHandler(file_handler)
+
+DATA_FOLDER = "data"
+os.makedirs(DATA_FOLDER, exist_ok=True)
+
+
+TOKEN = os.environ["BOT_TOKEN"]
+
+bot = Bot(
+    token=TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+)
+
 dp = Dispatcher()
 
 # --- Данные ---
@@ -79,10 +97,12 @@ def format_catalog():
 # --- Хендлеры ---
 @dp.message(Command("start"))
 async def cmd_start(msg: Message):
+    logger.info(f"/start от {message.from_user.id} (@{message.from_user.username})")
     await msg.answer("Бот активен. Напиши /help для списка команд.")
 
 @dp.message(Command("help"))
 async def cmd_help(msg: Message):
+    logger.info(f"/help от {message.from_user.id} (@{message.from_user.username})")
     text = (
         "Основные команды:\n"
         "/help — показать эту справку\n"
@@ -100,20 +120,25 @@ async def cmd_help(msg: Message):
 
 @dp.message(F.text.startswith("+трейд"))
 async def add_trade(msg: Message):
+    logger.info(f"+трейд от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:]]
     offers.setdefault(user_id, []).extend([line.strip() for line in lines])
+    save_json(offers, "offers.json")
     await msg.answer("Добавлено в трейд.")
 
 @dp.message(F.text.startswith("+lf"))
 async def add_lf(msg: Message):
+    logger.info(f"+lf от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:]]
     lookings.setdefault(user_id, []).extend([line.strip() for line in lines])
+    save_json(lookings, "lookings.json")
     await msg.answer("Добавлено в лф.")
 
 @dp.message(F.text == "!трейд")
 async def show_trade(msg: Message):
+    logger.info(f"!трейд от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     trades = offers.get(user_id, [])
     if trades:
@@ -123,6 +148,7 @@ async def show_trade(msg: Message):
 
 @dp.message(F.text == "!лф")
 async def show_lf(msg: Message):
+    logger.info(f"!лф от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     lfs = lookings.get(user_id, [])
     if lfs:
@@ -133,11 +159,13 @@ async def show_lf(msg: Message):
 @dp.message(F.text == "!очистить трейд")
 async def clear_trade(msg: Message):
     offers[msg.from_user.id] = []
+    save_json(offers, "offers.json")
     await msg.answer("Трейд очищен.")
 
 @dp.message(F.text == "!очистить лф")
 async def clear_lf(msg: Message):
     lookings[msg.from_user.id] = []
+    save_json(lookings, "lookings.json")
     await msg.answer("Лф очищен.")
 
 @dp.message(F.text.in_(["ss ст", "s вп", "сет a+", "itm b+", "крф s+"]))
@@ -149,11 +177,37 @@ async def activate_admin(msg: Message):
     user_id = msg.from_user.id
     admins.add(user_id)
     adm_codes.remove(msg.text)
+    logger.info(f"Пользователь {user_id} активировал админ-доступ.")
     await msg.answer("Теперь ты админ. Тебе доступны админ-команды.")
+
+@dp.errors()
+async def error_handler(event, exception):
+    logger.exception(f"Ошибка при обработке события {event}: {exception}")
+
+@dp.message()
+async def fallback_handler(msg: types.Message):
+    logger.warning(f"Неизвестная команда от {msg.from_user.id}: {msg.text}")
+    await msg.answer("Не понял команду. Напиши /help.")
+
+def save_json(data, filename):
+    path = os.path.join(DATA_FOLDER, filename)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def load_json(filename):
+    path = os.path.join(DATA_FOLDER, filename)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
 # Запуск бота
 async def main():
-    await dp.start_polling(bot)
+    logger.info("Бот запущен.")
+    try:
+        await dp.start_polling(bot)
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Бот остановлен.")
 
 if __name__ == "__main__":
     asyncio.run(main())
