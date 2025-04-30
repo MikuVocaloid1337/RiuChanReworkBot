@@ -108,12 +108,12 @@ def format_catalog():
 # --- Хендлеры ---
 @dp.message(Command("start"))
 async def cmd_start(msg: types.Message):
-    logger.info(f"/start от {message.from_user.id} (@{message.from_user.username})")
+    logger.info(f"/start от {msg.from_user.id} (@{msg.from_user.username})")
     await msg.reply("Бот активен. Напиши /help для списка команд.")
 
 @dp.message(Command("help"))
 async def cmd_help(msg: types.Message):
-    logger.info(f"/help от {message.from_user.id} (@{message.from_user.username})")
+    logger.info(f"/help от {msg.from_user.id} (@{msg.from_user.username})")
     text = (
         "Основные команды:\n"
         "/help — показать эту справку\n"
@@ -131,7 +131,7 @@ async def cmd_help(msg: types.Message):
 
 @dp.message(F.text.startswith("+трейд"))
 async def add_trade(msg: types.Message):
-    logger.info(f"+трейд от {message.from_user.id} (@{message.from_user.username})")
+    logger.info(f"+трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:]]
     offers.setdefault(user_id, []).extend([line.strip() for line in lines])
@@ -140,7 +140,7 @@ async def add_trade(msg: types.Message):
 
 @dp.message(F.text.startswith("+lf"))
 async def add_lf(msg: types.Message):
-    logger.info(f"+lf от {message.from_user.id} (@{message.from_user.username})")
+    logger.info(f"+lf от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:]]
     lookings.setdefault(user_id, []).extend([line.strip() for line in lines])
@@ -149,7 +149,7 @@ async def add_lf(msg: types.Message):
 
 @dp.message(F.text == "!трейд")
 async def show_trade(msg: types.Message):
-    logger.info(f"!трейд от {message.from_user.id} (@{message.from_user.username})")
+    logger.info(f"!трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     trades = offers.get(user_id, [])
     if trades:
@@ -159,7 +159,7 @@ async def show_trade(msg: types.Message):
 
 @dp.message(F.text == "!лф")
 async def show_lf(msg: types.Message):
-    logger.info(f"!лф от {message.from_user.id} (@{message.from_user.username})")
+    logger.info(f"!лф от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     lfs = lookings.get(user_id, [])
     if lfs:
