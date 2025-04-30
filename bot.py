@@ -4,11 +4,10 @@ import os
 import signal
 import json
 import logging
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
-from aiogram import F
 
 
 logging.basicConfig(
@@ -107,13 +106,13 @@ def format_catalog():
     return "\n".join(result)
 
 # --- Хендлеры ---
-@dp.message(Command("start"))
-async def cmd_start(msg: Message):
+@dp.message_handler(commands=['start'])
+async def start(msg: types.Message):
     logger.info(f"/start от {message.from_user.id} (@{message.from_user.username})")
-    await msg.answer("Бот активен. Напиши /help для списка команд.")
+    await msg.reply("Бот активен. Напиши /help для списка команд.")
 
-@dp.message(Command("help"))
-async def cmd_help(msg: Message):
+@dp.message(commands=['help'])
+async def cmd_help(msg: types.Message):
     logger.info(f"/help от {message.from_user.id} (@{message.from_user.username})")
     text = (
         "Основные команды:\n"
@@ -128,10 +127,10 @@ async def cmd_help(msg: Message):
         "+трейд сет 77 rings set: Top, Mid\n"
         "+lf сет 77 rings set: Mid, Low"
     )
-    await msg.answer(text)
+    await msg.reply(text)
 
 @dp.message(F.text.startswith("+трейд"))
-async def add_trade(msg: Message):
+async def add_trade(msg: types.Message):
     logger.info(f"+трейд от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:]]
@@ -140,7 +139,7 @@ async def add_trade(msg: Message):
     await msg.answer("Добавлено в трейд.")
 
 @dp.message(F.text.startswith("+lf"))
-async def add_lf(msg: Message):
+async def add_lf(msg: types.Message):
     logger.info(f"+lf от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:]]
@@ -149,7 +148,7 @@ async def add_lf(msg: Message):
     await msg.answer("Добавлено в лф.")
 
 @dp.message(F.text == "!трейд")
-async def show_trade(msg: Message):
+async def show_trade(msg: types.Message):
     logger.info(f"!трейд от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     trades = offers.get(user_id, [])
@@ -159,7 +158,7 @@ async def show_trade(msg: Message):
         await msg.answer("Трейд пуст.")
 
 @dp.message(F.text == "!лф")
-async def show_lf(msg: Message):
+async def show_lf(msg: types.Message):
     logger.info(f"!лф от {message.from_user.id} (@{message.from_user.username})")
     user_id = msg.from_user.id
     lfs = lookings.get(user_id, [])
@@ -169,23 +168,23 @@ async def show_lf(msg: Message):
         await msg.answer("Лф пуст.")
 
 @dp.message(F.text == "!очистить трейд")
-async def clear_trade(msg: Message):
+async def clear_trade(msg: types.Message):
     offers[msg.from_user.id] = []
     save_json(offers, "offers.json")
     await msg.answer("Трейд очищен.")
 
 @dp.message(F.text == "!очистить лф")
-async def clear_lf(msg: Message):
+async def clear_lf(msg: types.Message):
     lookings[msg.from_user.id] = []
     save_json(lookings, "lookings.json")
     await msg.answer("Лф очищен.")
 
 @dp.message(F.text.in_(["ss ст", "s вп", "сет a+", "itm b+", "крф s+"]))
-async def show_catalog_handler(msg: Message):
+async def show_catalog_handler(msg: types.Message):
     await msg.answer(format_catalog())
 
 @dp.message(F.text.in_(adm_codes))
-async def activate_admin(msg: Message):
+async def activate_admin(msg: types.Message):
     user_id = msg.from_user.id
     admins.add(user_id)
     adm_codes.remove(msg.text)
