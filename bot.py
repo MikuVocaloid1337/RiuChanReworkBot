@@ -47,9 +47,6 @@ def load_json(filename):
     return {}
 
 # --- Данные ---
-offers = load_json("offers.json")
-lookings = load_json("lookings.json")
-
 skins = {
     "ст": {
         "Ss+": ["summer Riu chan"],
@@ -87,8 +84,8 @@ skins = {
     }
 }
 
-offers = {}
-lookings = {}
+offers = load_json("offers.json")
+lookings = load_json("lookings.json")
 admins = set()
 adm_codes = {"#VagueOwner", "#ShapkaKrutoi", "#MikuPikuBeam"}
 
