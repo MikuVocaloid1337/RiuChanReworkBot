@@ -25,7 +25,7 @@ DATA_FOLDER = "data"
 os.makedirs(DATA_FOLDER, exist_ok=True)
 
 
-TOKEN = os.environ["BOT_TOKEN"]
+TOKEN = os.environ["TOKEN"]
 
 bot = Bot(
     token=TOKEN,
