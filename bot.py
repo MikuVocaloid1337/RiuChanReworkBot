@@ -4,11 +4,42 @@ import os
 import signal
 import json
 import logging
-from aiogram import Bot, Dispatcher, types, F
+import time
+from aiogram import Bot, Dispatcher, types, F, BaseMiddleware
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
+from collections import defaultdict, deque
 
+class AntiSpamMiddleware(BaseMiddleware):
+    def __init__(self, rate_limit=5, per_seconds=60, ban_time=60):
+        super().__init__()
+        self.rate_limit = rate_limit
+        self.per_seconds = per_seconds
+        self.ban_time = ban_time
+        self.user_timestamps = defaultdict(lambda: deque(maxlen=rate_limit))
+        self.banned_users = {}
+
+    async def __call__(self, handler, event: Message, data):
+        user_id = event.from_user.id
+        now = time.time()
+
+        # Проверка на бан
+        if user_id in self.banned_users:
+            if now < self.banned_users[user_id]:
+                return  # Игнорируем сообщение
+            else:
+                del self.banned_users[user_id]
+
+        timestamps = self.user_timestamps[user_id]
+        timestamps.append(now)
+
+        if len(timestamps) == self.rate_limit and (now - timestamps[0] < self.per_seconds):
+            self.banned_users[user_id] = now + self.ban_time
+            await event.answer(f"⚠️ Вы слишком активно отправляете сообщения. Подождите {self.ban_time} секунд.")
+            return
+
+        return await handler(event, data)
 
 logging.basicConfig(
     level=logging.INFO,  # можно DEBUG для подробностей
@@ -203,6 +234,7 @@ async def fallback_handler(msg: types.Message):
 # Запуск бота
 async def main():
     logger.info("Бот запущен.")
+    dp.message.middleware(AntiSpamMiddleware(rate_limit=5, per_seconds=60, ban_time=60))
     try:
         await dp.start_polling(bot)
     except (KeyboardInterrupt, SystemExit):
