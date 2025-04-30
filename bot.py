@@ -106,12 +106,12 @@ def format_catalog():
     return "\n".join(result)
 
 # --- Хендлеры ---
-@dp.message_handler(commands=['start'])
-async def start(msg: types.Message):
+@dp.message(Command("start"))
+async def cmd_start(msg: types.Message):
     logger.info(f"/start от {message.from_user.id} (@{message.from_user.username})")
     await msg.reply("Бот активен. Напиши /help для списка команд.")
 
-@dp.message(commands=['help'])
+@dp.message(Command("help"))
 async def cmd_help(msg: types.Message):
     logger.info(f"/help от {message.from_user.id} (@{message.from_user.username})")
     text = (
