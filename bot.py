@@ -143,12 +143,12 @@ async def cmd_start(msg: types.Message):
     logger.info(f"/start от {msg.from_user.id} (@{msg.from_user.username})")
     await msg.reply("Бот активен. Напиши /help для списка команд.")
 
-@dp.message(Command("помощь"))
+@dp.message(Command("ялох"))
 async def cmd_help(msg: types.Message):
-    logger.info(f"/помощь от {msg.from_user.id} (@{msg.from_user.username})")
+    logger.info(f"/ялох от {msg.from_user.id} (@{msg.from_user.username})")
     text = (
         "Основные команды:\n"
-        "/помощь — я - овощь, мне нужна помощь\n"
+        "/ялох — я - овощь, мне нужна помощь\n"
         "!трейд — показать твой трейд\n"
         "!лф — показать твой лф\n"
         "!очистить трейд — очистить трейд\n"
