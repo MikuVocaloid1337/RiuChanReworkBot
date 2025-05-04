@@ -227,11 +227,6 @@ async def activate_admin(msg: types.Message):
 async def error_handler(event, exception):
     logger.exception(f"Ошибка при обработке события {event}: {exception}")
 
-@dp.message()
-async def fallback_handler(msg: types.Message):
-    logger.warning(f"Неизвестная команда от {msg.from_user.id}: {msg.text}")
-    await msg.answer("Не понял команду. Напиши /help.")
-
 # Запуск бота
 async def main():
     logger.info("Бот запущен.")
