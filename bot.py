@@ -255,8 +255,7 @@ async def error_handler(event, exception):
 
 @dp.message()
 async def echo_handler(message: Message):
-    user_id = msg.from_user.id
-    await logger.info(f"{user_id}.")
+    await logger.info(f"сообщение.")
     
 # Запуск бота
 async def main():
