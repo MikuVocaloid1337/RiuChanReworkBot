@@ -5,6 +5,7 @@ import signal
 import json
 import logging
 import time
+from scam_rules import SCAM_KEYWORDS, SCAM_DOMAINS, SCAM_PATTERNS
 from aiogram import Bot, Dispatcher, types, F, BaseMiddleware
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
@@ -39,6 +40,31 @@ class AntiSpamMiddleware(BaseMiddleware):
             self.banned_users[user_id] = now + self.ban_time
             await event.answer(f"⚠️ Вы слишком активно отправляете сообщения. Подождите {self.ban_time} секунд.")
             return
+
+        return await handler(event, data)
+
+class ScamFilterMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event: Message, data):
+        msg_text = event.text.lower()
+
+        # Поиск по ключевым словам
+        if any(word in msg_text for word in SCAM_KEYWORDS):
+            await event.delete()
+            await event.chat.send_message(f"⚠️ {event.from_user.full_name}, ваше сообщение похоже на скам.")
+            return
+
+        # Поиск по доменам
+        if any(domain in msg_text for domain in SCAM_DOMAINS):
+            await event.delete()
+            await event.chat.send_message(f"🚫 Запрещенная ссылка удалена.")
+            return
+
+        # Поиск по регуляркам
+        for pattern in SCAM_PATTERNS:
+            if pattern.search(msg_text):
+                await event.delete()
+                await event.chat.send_message(f"🛡️ Обнаружен потенциальный скам.")
+                return
 
         return await handler(event, data)
 
@@ -231,6 +257,7 @@ async def error_handler(event, exception):
 async def main():
     logger.info("Бот запущен.")
     dp.message.middleware(AntiSpamMiddleware(rate_limit=5, per_seconds=60, ban_time=60))
+    dp.message.middleware(ScamFilterMiddleware())
     try:
         await dp.start_polling(bot)
     except (KeyboardInterrupt, SystemExit):
