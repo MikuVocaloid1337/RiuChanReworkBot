@@ -255,7 +255,7 @@ async def error_handler(event, exception):
     
 @dp.message()
 async def echo_handler(message: Message):
-    pass
+    await message.answer("Сообщение прошло фильтр.")
 
 # Запуск бота
 async def main():
