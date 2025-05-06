@@ -68,8 +68,6 @@ class ScamFilterMiddleware(BaseMiddleware):
 
         return await handler(event, data)
 
-dp.message.middleware(ScamFilterMiddleware())
-
 logging.basicConfig(
     level=logging.INFO,  # можно DEBUG для подробностей
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
