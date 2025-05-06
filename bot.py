@@ -253,9 +253,10 @@ async def activate_admin(msg: types.Message):
 async def error_handler(event, exception):
     logger.exception(f"Ошибка при обработке события {event}: {exception}")
 
-#@dp.message()
-#async def echo_handler(message: Message):
-#   await message.answer("Сообщение прошло фильтр.")
+@dp.message()
+async def echo_handler(message: Message):
+    user_id = msg.from_user.id
+    await logger.info(f"{user_id}.")
     
 # Запуск бота
 async def main():
