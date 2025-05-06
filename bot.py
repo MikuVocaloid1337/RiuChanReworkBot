@@ -50,20 +50,20 @@ class ScamFilterMiddleware(BaseMiddleware):
         # Поиск по ключевым словам
         if any(word in msg_text for word in SCAM_KEYWORDS):
             await event.delete()
-            await event.chat.send_message(f"⚠️ {event.from_user.full_name}, ваше сообщение похоже на скам.")
+            await event.answer(f"⚠️ {event.from_user.full_name}, ваше сообщение похоже на скам.")
             return
 
         # Поиск по доменам
         if any(domain in msg_text for domain in SCAM_DOMAINS):
             await event.delete()
-            await event.chat.send_message(f"🚫 Запрещенная ссылка удалена.")
+            await event.answer(f"🚫 Запрещенная ссылка удалена.")
             return
 
         # Поиск по регуляркам
         for pattern in SCAM_PATTERNS:
             if pattern.search(msg_text):
                 await event.delete()
-                await event.chat.send_message(f"🛡️ Обнаружен потенциальный скам.")
+                await event.answer(f"🛡️ Обнаружен потенциальный скам.")
                 return
 
         return await handler(event, data)
