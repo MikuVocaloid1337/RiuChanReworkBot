@@ -264,7 +264,7 @@ async def activate_admin(msg: types.Message):
     await msg.answer("Теперь ты админ. Тебе доступны админ-команды.")
 
 # ID публичного чата или канала, куда бот будет отправлять сообщения
-TARGET_CHAT_ID = -1002170558932_1  # замените на ID своего чата/канала
+TARGET_CHAT_ID = -1002170558932  # замените на ID своего чата/канала
 
 @dp.message(F.chat.type == "private")
 async def forward_to_channel(message: Message):
