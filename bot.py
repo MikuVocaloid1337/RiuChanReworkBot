@@ -274,6 +274,7 @@ async def forward_to_channel(message: Message):
 
     # Пересылка текста
     if message.text:
+        logger.info(f"Кто-то пиздит через бота")
         await bot.send_message(chat_id=TARGET_CHAT_ID, text=message.text)
 
     # Поддержка мультимедиа (если нужно)
