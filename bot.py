@@ -10,7 +10,7 @@ from aiogram import Bot, Dispatcher, types, F, BaseMiddleware
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
-from aiogram.types import Message, Update
+from aiogram.types import Message, Update, ChatMemberAdministrator, ChatMemberOwner
 from collections import defaultdict, deque
 
 class AntiSpamMiddleware(BaseMiddleware):
@@ -23,13 +23,21 @@ class AntiSpamMiddleware(BaseMiddleware):
         self.banned_users = {}
 
     async def __call__(self, handler, event: Message, data):
+        bot = data["bot"]
         user_id = event.from_user.id
+        chat_id = event.chat.id
+
+        # ⛔ Пропускаем админов
+        member = await bot.get_chat_member(chat_id, user_id)
+        if isinstance(member, (ChatMemberAdministrator, ChatMemberOwner)):
+            return await handler(event, data)
+
         now = time.time()
 
         # Проверка на бан
         if user_id in self.banned_users:
             if now < self.banned_users[user_id]:
-                return  # Игнорируем сообщение
+                return
             else:
                 del self.banned_users[user_id]
 
@@ -42,24 +50,30 @@ class AntiSpamMiddleware(BaseMiddleware):
             return
 
         return await handler(event, data)
-
+        
 class ScamFilterMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Message, data):
+        bot = data["bot"]
+        user_id = event.from_user.id
+        chat_id = event.chat.id
+
+        # ⛔ Пропускаем админов
+        member = await bot.get_chat_member(chat_id, user_id)
+        if isinstance(member, (ChatMemberAdministrator, ChatMemberOwner)):
+            return await handler(event, data)
+
         msg_text = event.text.lower()
 
-        # Поиск по ключевым словам
         if any(word in msg_text for word in SCAM_KEYWORDS):
             await event.delete()
             await event.answer(f"⚠️ {event.from_user.full_name}, ваше сообщение похоже на скам.")
             return
 
-        # Поиск по доменам
         if any(domain in msg_text for domain in SCAM_DOMAINS):
             await event.delete()
             await event.answer(f"🚫 Запрещенная ссылка удалена.")
             return
 
-        # Поиск по регуляркам
         for pattern in SCAM_PATTERNS:
             if pattern.search(msg_text):
                 await event.delete()
