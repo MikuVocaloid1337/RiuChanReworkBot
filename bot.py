@@ -252,6 +252,7 @@ async def activate_admin(msg: types.Message):
 @dp.errors()
 async def error_handler(event, exception):
     logger.exception(f"Ошибка при обработке события {event}: {exception}")
+    return True
 
 @dp.message()
 async def echo_handler(message: Message):
