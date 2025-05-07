@@ -10,7 +10,7 @@ from aiogram import Bot, Dispatcher, types, F, BaseMiddleware
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, Update
 from collections import defaultdict, deque
 
 class AntiSpamMiddleware(BaseMiddleware):
