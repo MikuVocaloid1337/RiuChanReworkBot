@@ -250,8 +250,8 @@ async def activate_admin(msg: types.Message):
     await msg.answer("Теперь ты админ. Тебе доступны админ-команды.")
 
 @dp.errors()
-async def error_handler(event, exception):
-    logger.exception(f"Ошибка при обработке события {event}: {exception}")
+async def error_handler(update: Update, exception: Exception):
+    logger.exception(f"Ошибка при обработке события {update}: {exception}")
     return True
 
 @dp.message()
