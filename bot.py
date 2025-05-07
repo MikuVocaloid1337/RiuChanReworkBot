@@ -269,7 +269,7 @@ TARGET_CHAT_ID = -1002170558932  # замените на ID своего чат�
 @dp.message(F.chat.type == "private")
 async def forward_to_channel(message: Message):
     # Чтобы пересылались только твои сообщения — укажи свой Telegram ID
-    if message.from_user.id != 690469640:
+    if message.from_user.id != 690469640 or 5762585402:
         return
 
     # Пересылка текста
