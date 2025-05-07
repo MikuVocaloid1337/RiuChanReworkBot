@@ -266,18 +266,19 @@ async def activate_admin(msg: types.Message):
 # ID публичного чата или канала, куда бот будет отправлять сообщения
 TARGET_CHAT_ID = -1002170558932  # замените на ID своего чата/канала
 
+# Список ID пользователей, которым разрешено вещать
+ALLOWED_USERS = {690469640, 5762585402}  # Используем множество (set) для быстрого поиска
+
 @dp.message(F.chat.type == "private")
 async def forward_to_channel(message: Message):
-    # Чтобы пересылались только твои сообщения — укажи свой Telegram ID
-    if message.from_user.id != 690469640:
-        return
+    if message.from_user.id not in ALLOWED_USERS:
+        return  # Игнорируем остальных
 
     # Пересылка текста
     if message.text:
-        logger.info(f"Кто-то пиздит через бота")
+        logger.info(f"Пользователь {message.from_user.id} отправил сообщение через бота")
         await bot.send_message(chat_id=TARGET_CHAT_ID, text=message.text)
 
-    # Поддержка мультимедиа (если нужно)
     elif message.photo:
         await bot.send_photo(chat_id=TARGET_CHAT_ID, photo=message.photo[-1].file_id, caption=message.caption or "")
     elif message.video:
