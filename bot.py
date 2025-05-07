@@ -263,6 +263,29 @@ async def activate_admin(msg: types.Message):
     logger.info(f"Пользователь {user_id} активировал админ-доступ.")
     await msg.answer("Теперь ты админ. Тебе доступны админ-команды.")
 
+# ID публичного чата или канала, куда бот будет отправлять сообщения
+TARGET_CHAT_ID = -1002170558932_1  # замените на ID своего чата/канала
+
+@dp.message(F.chat.type == "private")
+async def forward_to_channel(message: Message):
+    # Чтобы пересылались только твои сообщения — укажи свой Telegram ID
+    if message.from_user.id != 690469640:
+        return
+
+    # Пересылка текста
+    if message.text:
+        await bot.send_message(chat_id=TARGET_CHAT_ID, text=message.text)
+
+    # Поддержка мультимедиа (если нужно)
+    elif message.photo:
+        await bot.send_photo(chat_id=TARGET_CHAT_ID, photo=message.photo[-1].file_id, caption=message.caption or "")
+    elif message.video:
+        await bot.send_video(chat_id=TARGET_CHAT_ID, video=message.video.file_id, caption=message.caption or "")
+    elif message.document:
+        await bot.send_document(chat_id=TARGET_CHAT_ID, document=message.document.file_id, caption=message.caption or "")
+    else:
+        await message.answer("⛔ Этот тип сообщений пока не поддерживается.")
+
 @dp.errors()
 async def error_handler(update: Update, exception: Exception):
     logger.exception(f"Ошибка при обработке события {update}: {exception}")
@@ -271,10 +294,6 @@ async def error_handler(update: Update, exception: Exception):
 @dp.message()
 async def echo_handler(message: Message):
     logger.info(f"сообщение.")
-
-@dp.message()
-async def show_chat_id(message: Message):
-    await message.reply(f"chat.id = {message.chat.id}")
     
 # Запуск бота
 async def main():
