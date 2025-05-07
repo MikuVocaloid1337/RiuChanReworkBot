@@ -271,6 +271,10 @@ async def error_handler(update: Update, exception: Exception):
 @dp.message()
 async def echo_handler(message: Message):
     logger.info(f"сообщение.")
+
+@dp.message()
+async def show_chat_id(message: Message):
+    await message.reply(f"chat.id = {message.chat.id}")
     
 # Запуск бота
 async def main():
