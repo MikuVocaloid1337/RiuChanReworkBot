@@ -277,7 +277,7 @@ async def show_trade(msg: types.Message):
 
     text = "Трейд-лист:\n"
     for username, items in trades.items():
-        text += f"\n@{username}:\n" + "\n".join(f"- {item}" for item in items)
+        text += f"\n{username}:\n" + "\n".join(f"- {item}" for item in items)
         
     await msg.answer(text)
         
@@ -299,7 +299,7 @@ async def show_lf(msg: types.Message):
 
     text = "ЛФ:\n"
     for username, items in lookings.items():
-        text += f"\n@{username}:\n" + "\n".join(f"- {item}" for item in items)
+        text += f"\n{username}:\n" + "\n".join(f"- {item}" for item in items)
 
     await msg.answer(text)
 
@@ -349,6 +349,15 @@ TARGET_CHAT_ID = -1002170558932  # замените на ID своего чат�
 
 # Список ID пользователей, которым разрешено вещать
 ALLOWED_USERS = {690469640, 5762585402}  # Используем множество (set) для быстрого поиска
+
+@dp.message_handler(commands=['ban'], user_id=ALLOWED_USERS)
+async def ban_user(msg: types.Message):
+    user_id_to_ban = int(msg.get_args())
+    try:
+        await msg.chat.kick_member(user_id_to_ban)
+        await msg.answer(f"Пользователь с ID {user_id_to_ban} забанен.")
+    except Exception as e:
+        await msg.answer(f"Не удалось забанить пользователя: {e}")
 
 @dp.message(F.chat.type == "private")
 async def forward_to_channel(message: Message):
