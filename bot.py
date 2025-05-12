@@ -1,5 +1,5 @@
 # bot.py
-
+import asyncpg
 import os
 import signal
 import json
@@ -12,6 +12,26 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
 from aiogram.types import Message, Update, ChatMemberAdministrator, ChatMemberOwner
 from collections import defaultdict, deque
+
+async def init_db():
+    conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS trades (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            username TEXT,
+            item TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS lookings (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            username TEXT,
+            item TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    """)
+    await conn.close()
 
 class AntiSpamMiddleware(BaseMiddleware):
     def __init__(self, rate_limit=5, per_seconds=60, ban_time=60):
@@ -304,6 +324,7 @@ async def main():
     dp.message.middleware(ScamFilterMiddleware())
     try:
         await dp.start_polling(bot)
+        await init_db()
     except (KeyboardInterrupt, SystemExit):
         logger.info("Бот остановлен.")
 
