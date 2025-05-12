@@ -13,24 +13,31 @@ from aiogram.filters import Command
 from aiogram.types import Message, Update, ChatMemberAdministrator, ChatMemberOwner
 from collections import defaultdict, deque
 
+db_pool: asyncpg.Pool = None
 async def init_db():
-    conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
-    await conn.execute("""
-        CREATE TABLE IF NOT EXISTS trades (
-            id SERIAL PRIMARY KEY,
-            user_id BIGINT NOT NULL,
-            username TEXT,
-            item TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-        CREATE TABLE IF NOT EXISTS lookings (
-            id SERIAL PRIMARY KEY,
-            user_id BIGINT NOT NULL,
-            username TEXT,
-            item TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-    """)
+    global db_pool
+    db_pool = await asyncpg.create_pool(
+        dsn=os.getenv("DATABASE_URL")  # Лучше переместить в переменные окружения
+    )
+
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS trades (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                username TEXT,
+                item TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS lookings (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                username TEXT,
+                item TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        """)
+
     await conn.close()
 
 class AntiSpamMiddleware(BaseMiddleware):
@@ -225,7 +232,13 @@ async def cmd_help(msg: types.Message):
 async def add_trade(msg: types.Message):
     logger.info(f"+трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
+    username = msg.from_user.username or "неизвестно"
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:]]
+    async with db_pool.acquire() as conn:
+        await conn.executemany(
+            "INSERT INTO trades (user_id, username, item) VALUES ($1, $2, $3)",
+            [(user_id, username, line.strip()) for line in lines]
+        )
     offers.setdefault(user_id, []).extend([line.strip() for line in lines])
     save_json(offers, "offers.json")
     await msg.answer("Добавлено в трейд.")
@@ -234,7 +247,13 @@ async def add_trade(msg: types.Message):
 async def add_lf(msg: types.Message):
     logger.info(f"+lf от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
+    username = msg.from_user.username or "неизвестно"
     lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:]]
+    async with db_pool.acquire() as conn:
+        await conn.executemany(
+            "INSERT INTO lookings (user_id, username, item) VALUES ($1, $2, $3)",
+            [(user_id, username, line.strip()) for line in lines]
+        )
     lookings.setdefault(user_id, []).extend([line.strip() for line in lines])
     save_json(lookings, "lookings.json")
     await msg.answer("Добавлено в лф.")
@@ -243,21 +262,46 @@ async def add_lf(msg: types.Message):
 async def show_trade(msg: types.Message):
     logger.info(f"!трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
-    trades = offers.get(user_id, [])
-    if trades:
-        await msg.answer("Твой трейд:\n" + "\n".join(f"- {t}" for t in trades))
-    else:
-        await msg.answer("Трейд пуст.")
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT username, item FROM trades ORDER BY user_id")
 
+    if not rows:
+        await msg.answer("Трейд пуст.")
+        return
+
+    # Сгруппируем по пользователям
+    trades = {}
+    for row in rows:
+        uname = row["username"] or "неизвестно"
+        trades.setdefault(uname, []).append(row["item"])
+
+    text = "Трейд-лист:\n"
+    for username, items in trades.items():
+        text += f"\n@{username}:\n" + "\n".join(f"- {item}" for item in items)
+        
+    await msg.answer(text)
+        
 @dp.message(F.text == "!лф")
 async def show_lf(msg: types.Message):
     logger.info(f"!лф от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
-    lfs = lookings.get(user_id, [])
-    if lfs:
-        await msg.answer("Ты ищешь:\n" + "\n".join(f"- {t}" for t in lfs))
-    else:
-        await msg.answer("Лф пуст.")
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT username, item FROM lookings ORDER BY user_id")
+
+    if not rows:
+        await msg.answer("ЛФ пуст.")
+        return
+
+    lookings = {}
+    for row in rows:
+        uname = row["username"] or "неизвестно"
+        lookings.setdefault(uname, []).append(row["item"])
+
+    text = "ЛФ:\n"
+    for username, items in lookings.items():
+        text += f"\n@{username}:\n" + "\n".join(f"- {item}" for item in items)
+
+    await msg.answer(text)
 
 @dp.message(F.text == "!очистить трейд")
 async def clear_trade(msg: types.Message):
@@ -323,8 +367,8 @@ async def main():
     dp.message.middleware(AntiSpamMiddleware(rate_limit=5, per_seconds=60, ban_time=60))
     dp.message.middleware(ScamFilterMiddleware())
     try:
-        await dp.start_polling(bot)
         await init_db()
+        await dp.start_polling(bot)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Бот остановлен.")
 
