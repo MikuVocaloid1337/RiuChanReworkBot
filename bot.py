@@ -5,6 +5,8 @@ import signal
 import json
 import logging
 import time
+import datetime
+import aiocron
 from scam_rules import SCAM_KEYWORDS, SCAM_DOMAINS, SCAM_PATTERNS
 from aiogram import Bot, Dispatcher, types, F, BaseMiddleware
 from aiogram.enums import ParseMode
@@ -303,15 +305,32 @@ async def show_lf(msg: types.Message):
 
 @dp.message(F.text == "!очистить трейд")
 async def clear_trade(msg: types.Message):
-    offers[msg.from_user.id] = []
-    save_json(offers, "offers.json")
+    user_id = msg.from_user.id
+    async with db_pool.acquire() as conn:
+        # Удаляем все записи, связанные с пользователем из таблицы трейдов
+        await conn.execute('DELETE FROM trades WHERE user_id = $1', user_id)
     await msg.answer("Трейд очищен.")
 
 @dp.message(F.text == "!очистить лф")
 async def clear_lf(msg: types.Message):
-    lookings[msg.from_user.id] = []
-    save_json(lookings, "lookings.json")
+    user_id = msg.from_user.id
+    async with db_pool.acquire() as conn:
+        # Удаляем все записи, связанные с пользователем из таблицы лф
+        await conn.execute('DELETE FROM lookings WHERE user_id = $1', user_id)
     await msg.answer("Лф очищен.")
+
+async def delete_old_records():
+    # Текущая дата
+    now = datetime.datetime.now()
+    # Дата, старше которой будем удалять записи (7 дней назад)
+    threshold_date = now - datetime.timedelta(days=7)
+    
+    async with db_pool.acquire() as conn:
+        # Удаляем записи из трейдов, старше 30 дней
+        await conn.execute('DELETE FROM trades WHERE created_at < $1', threshold_date)
+        # Удаляем записи из лф, старше 30 дней
+        await conn.execute('DELETE FROM lookings WHERE created_at < $1', threshold_date)
+
 
 @dp.message(F.text.in_(["ss ст", "s вп", "сет a+", "itm b+", "крф s+"]))
 async def show_catalog_handler(msg: types.Message):
@@ -358,6 +377,10 @@ async def error_handler(update: Update, exception: Exception):
 @dp.message()
 async def echo_handler(message: Message):
     logger.info(f"сообщение.")
+
+@aiocron.crontab('0 0 * * *')
+async def scheduled_delete_old_records():
+    await delete_old_records()
     
 # Запуск бота
 async def main():
