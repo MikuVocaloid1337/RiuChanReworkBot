@@ -38,8 +38,6 @@ async def init_db():
             );
         """)
 
-    await conn.close()
-
 class AntiSpamMiddleware(BaseMiddleware):
     def __init__(self, rate_limit=5, per_seconds=60, ban_time=60):
         super().__init__()
