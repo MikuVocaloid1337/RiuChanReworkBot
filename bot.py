@@ -73,7 +73,7 @@ class AntiSpamMiddleware(BaseMiddleware):
 
         if len(timestamps) == self.rate_limit and (now - timestamps[0] < self.per_seconds):
             self.banned_users[user_id] = now + self.ban_time
-            await event.answer(f"⚠️ Вы слишком активно отправляете сообщения. Подождите {self.ban_time} секунд.")
+            await event.answer(f"⚠️ Ты слишком активно отправляешь сообщения. Подожди {self.ban_time} секунд.")
             return
 
         return await handler(event, data)
@@ -93,7 +93,7 @@ class ScamFilterMiddleware(BaseMiddleware):
 
         if any(word in msg_text for word in SCAM_KEYWORDS):
             await event.delete()
-            await event.answer(f"⚠️ {event.from_user.full_name}, ваше сообщение похоже на скам.")
+            await event.answer(f"⚠️ {event.from_user.full_name}, твоё сообщение похоже на скам.")
             return
 
         if any(domain in msg_text for domain in SCAM_DOMAINS):
@@ -219,11 +219,11 @@ async def cmd_help(msg: types.Message):
         "Основные команды:\n"
         "/ялох — я - овощь, мне нужна помощь\n"
         "!трейд — показать твой трейд\n"
-        "!лф — показать твой лф\n"
+        "!лф — показать твой лф(looking for)\n"
         "!очистить трейд — очистить трейд\n"
         "!очистить лф — очистить лф\n"
         "+трейд [тип] [название] — добавить в трейд\n"
-        "+lf [тип] [название] — добавить в лф\n"
+        "+lf [тип] [название] — добавить в лф(looking for)\n"
         "Пример сета:\n"
         "+трейд сет 77 rings set: Top, Mid\n"
         "+lf сет 77 rings set: Mid, Low"
