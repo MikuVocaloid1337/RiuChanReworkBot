@@ -408,7 +408,7 @@ async def forward_to_channel(message: Message):
     else:
         await message.answer("⛔ Этот тип сообщений пока не поддерживается.")
 
-@dp.errors()
+@dp.error()
 async def error_handler(update: Update, exception: Exception):
     logger.exception(f"Ошибка при обработке события {update}: {exception}")
     return True
