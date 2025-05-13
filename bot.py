@@ -230,30 +230,38 @@ async def cmd_help(msg: types.Message):
     )
     await msg.reply(text)
 
+def validate_lines(lines: list[str]) -> str | None:
+    if len(lines) > MAX_LINES:
+        return f"Максимум {MAX_LINES} строк."
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            return "Обнаружена пустая строка или строка из одних пробелов."
+        if len(stripped) > MAX_LINE_LENGTH:
+            return f"Строка слишком длинная (максимум {MAX_LINE_LENGTH} символов):\n{stripped}"
+
+    return None
+
 @dp.message(F.text.startswith("+трейд"))
 async def add_trade(msg: types.Message):
     logger.info(f"+трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     username = msg.from_user.username or "неизвестно"
-    
-    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:].strip()]
+    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:]]
 
-    # Ограничения
-    if len(lines) > MAX_LINES:
-        await msg.answer(f"Максимум {MAX_LINES} строк.")
+    error = validate_lines(lines)
+    if error:
+        await msg.answer(error)
         return
-    for line in lines:
-        if len(line.strip()) > MAX_LINE_LENGTH:
-            await msg.answer(f"Строка слишком длинная (макс {MAX_LINE_LENGTH} символов):\n{line.strip()}")
-            return
+
+    clean_lines = [line.strip() for line in lines]
 
     async with db_pool.acquire() as conn:
         await conn.executemany(
             "INSERT INTO trades (user_id, username, item) VALUES ($1, $2, $3)",
-            [(user_id, username, line.strip()) for line in lines]
+            [(user_id, username, line) for line in clean_lines]
         )
-    offers.setdefault(user_id, []).extend([line.strip() for line in lines])
-    save_json(offers, "offers.json")
     await msg.answer("Добавлено в трейд.")
 
 
@@ -262,26 +270,22 @@ async def add_lf(msg: types.Message):
     logger.info(f"+lf от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     username = msg.from_user.username or "неизвестно"
-    
-    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:].strip()]
+    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:]]
 
-    # Ограничения
-    if len(lines) > MAX_LINES:
-        await msg.answer(f"Максимум {MAX_LINES} строк.")
+    error = validate_lines(lines)
+    if error:
+        await msg.answer(error)
         return
-    for line in lines:
-        if len(line.strip()) > MAX_LINE_LENGTH:
-            await msg.answer(f"Строка слишком длинная (макс {MAX_LINE_LENGTH} символов):\n{line.strip()}")
-            return
+
+    clean_lines = [line.strip() for line in lines]
 
     async with db_pool.acquire() as conn:
         await conn.executemany(
             "INSERT INTO lookings (user_id, username, item) VALUES ($1, $2, $3)",
-            [(user_id, username, line.strip()) for line in lines]
+            [(user_id, username, line) for line in clean_lines]
         )
-    lookings.setdefault(user_id, []).extend([line.strip() for line in lines])
-    save_json(lookings, "lookings.json")
     await msg.answer("Добавлено в лф.")
+
 
 
 @dp.message(F.text == "!трейд")
