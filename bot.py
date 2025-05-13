@@ -7,11 +7,12 @@ import logging
 import time
 import datetime
 import aiocron
+import re
 from scam_rules import SCAM_KEYWORDS, SCAM_DOMAINS, SCAM_PATTERNS
 from aiogram import Bot, Dispatcher, types, F, BaseMiddleware
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
-from aiogram.filters import Command
+from aiogram.filters import Command, Regexp
 from aiogram.types import Message, Update, ChatMemberAdministrator, ChatMemberOwner
 from collections import defaultdict, deque
 
@@ -243,7 +244,7 @@ def validate_lines(lines: list[str]) -> str | None:
 
     return None
 
-@dp.message(F.text.startswith("+трейд"))
+@dp.message(Regexp(r"^\+трейд", flags=re.IGNORECASE))
 async def add_trade(msg: types.Message):
     logger.info(f"+трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
@@ -265,7 +266,7 @@ async def add_trade(msg: types.Message):
     await msg.answer("Добавлено в трейд.")
 
 
-@dp.message(F.text.startswith("+lf"))
+@dp.message(Regexp(r"^\+lf", flags=re.IGNORECASE))
 async def add_lf(msg: types.Message):
     logger.info(f"+lf от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
@@ -288,7 +289,7 @@ async def add_lf(msg: types.Message):
 
 
 
-@dp.message(F.text == "!трейд")
+@dp.message(Regexp(r"^\!трейд", flags=re.IGNORECASE))
 async def show_trade(msg: types.Message):
     logger.info(f"!трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
@@ -311,7 +312,7 @@ async def show_trade(msg: types.Message):
         
     await msg.answer(text)
         
-@dp.message(F.text == "!лф")
+@dp.message(Regexp(r"^\!лф", flags=re.IGNORECASE))
 async def show_lf(msg: types.Message):
     logger.info(f"!лф от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
@@ -333,7 +334,7 @@ async def show_lf(msg: types.Message):
 
     await msg.answer(text)
 
-@dp.message(F.text == "!очистить трейд")
+@dp.message(Regexp(r"^\!очистить трейд", flags=re.IGNORECASE))
 async def clear_trade(msg: types.Message):
     user_id = msg.from_user.id
     async with db_pool.acquire() as conn:
@@ -341,7 +342,7 @@ async def clear_trade(msg: types.Message):
         await conn.execute('DELETE FROM trades WHERE user_id = $1', user_id)
     await msg.answer("Трейд очищен.")
 
-@dp.message(F.text == "!очистить лф")
+@dp.message(Regexp(r"^\!очистить лф", flags=re.IGNORECASE))
 async def clear_lf(msg: types.Message):
     user_id = msg.from_user.id
     async with db_pool.acquire() as conn:
