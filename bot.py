@@ -127,6 +127,8 @@ os.makedirs(DATA_FOLDER, exist_ok=True)
 
 
 TOKEN = os.environ["TOKEN"]
+MAX_LINES = 5
+MAX_LINE_LENGTH = 100
 
 bot = Bot(
     token=TOKEN,
@@ -233,7 +235,18 @@ async def add_trade(msg: types.Message):
     logger.info(f"+трейд от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     username = msg.from_user.username or "неизвестно"
-    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:]]
+    
+    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[7:].strip()]
+
+    # Ограничения
+    if len(lines) > MAX_LINES:
+        await msg.answer(f"Максимум {MAX_LINES} строк.")
+        return
+    for line in lines:
+        if len(line.strip()) > MAX_LINE_LENGTH:
+            await msg.answer(f"Строка слишком длинная (макс {MAX_LINE_LENGTH} символов):\n{line.strip()}")
+            return
+
     async with db_pool.acquire() as conn:
         await conn.executemany(
             "INSERT INTO trades (user_id, username, item) VALUES ($1, $2, $3)",
@@ -243,12 +256,24 @@ async def add_trade(msg: types.Message):
     save_json(offers, "offers.json")
     await msg.answer("Добавлено в трейд.")
 
+
 @dp.message(F.text.startswith("+lf"))
 async def add_lf(msg: types.Message):
     logger.info(f"+lf от {msg.from_user.id} (@{msg.from_user.username})")
     user_id = msg.from_user.id
     username = msg.from_user.username or "неизвестно"
-    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:]]
+    
+    lines = msg.text.split("\n")[1:] if "\n" in msg.text else [msg.text[4:].strip()]
+
+    # Ограничения
+    if len(lines) > MAX_LINES:
+        await msg.answer(f"Максимум {MAX_LINES} строк.")
+        return
+    for line in lines:
+        if len(line.strip()) > MAX_LINE_LENGTH:
+            await msg.answer(f"Строка слишком длинная (макс {MAX_LINE_LENGTH} символов):\n{line.strip()}")
+            return
+
     async with db_pool.acquire() as conn:
         await conn.executemany(
             "INSERT INTO lookings (user_id, username, item) VALUES ($1, $2, $3)",
@@ -257,6 +282,7 @@ async def add_lf(msg: types.Message):
     lookings.setdefault(user_id, []).extend([line.strip() for line in lines])
     save_json(lookings, "lookings.json")
     await msg.answer("Добавлено в лф.")
+
 
 @dp.message(F.text == "!трейд")
 async def show_trade(msg: types.Message):
